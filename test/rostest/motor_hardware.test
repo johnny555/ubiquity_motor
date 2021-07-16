@@ -1,3 +1,0 @@
-<launch>
-    <test test-name="motor_hardware_test" pkg="ubiquity_motor" type="motor_hardware_test" />
-</launch>

@@ -1,0 +1,9 @@
+<library path="ubiquity_motor">
+  <class name="ubiquity_motor/UbiquityMotorSystemHardware"
+         type="ubiquity_motor::UbiquityMotorSystemHardware"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      The ros2_control system hardware interface-type implemented for Ubiquity Motor. It uses velocity command and position state interface.
+    </description>
+  </class>
+</library>

@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
 #
 # Command control direct to Ubiquity Robotics Magni Controller Board
@@ -38,18 +38,20 @@ import sys
 import time
 import serial
 import string
-import thread
+import _thread
 import smbus
 
 # simple version string
 g_version = "20210215"
 
 # default serial device.  An  adapter in USB is often  '/dev/ttyUSB0'
-g_serialDev = '/dev/ttyAMA0' 
+# g_serialDev = '/dev/ttyAMA0' 
+g_serialDev = '/dev/ttyUSB0' 
 
 # This debug flag if set True enables prints and so on but cannot be used in production
 g_debug = False
 
+ser = None
 
 # Simple wrappers to prevent log overhead and use desired log functions for your system
 def logAlways(message):
@@ -63,7 +65,7 @@ def logDebug(message):
 # Define an input thread that will pick up keyboard presses
 def keyboard_thread(intKeys):
     # logAlways("\nkeyboard input thread wait for key")
-    inChar = raw_input()
+    inChar = input()
     # logAlways("  keyboard input thread got a key")
     intKeys.append(inChar)
 
@@ -123,7 +125,7 @@ def formMagniSpeedMessage(rightSpeed, leftSpeed):
 def runTillKeypress(speed):
     print("runTillKeypress starting using speed ", int(speed))
     keyBuf  = []
-    thread.start_new_thread(keyboard_thread, (keyBuf,))
+    _thread.start_new_thread(keyboard_thread, (keyBuf,))
     logAlways("runTillKeypress drop into loop")
     while not keyBuf:
         logAlways("runTillKeypress do the speed command")
@@ -283,7 +285,7 @@ def fetchReplyLongWord(ser, cmdHex, regHex):
 # utility to set right and left wheel speeds then exit when key is hit
 def setSpeedTillKeypress(ser, speed1, speed2):
     intKeys = []
-    thread.start_new_thread(keyboard_thread, (intKeys,))
+    _thread.start_new_thread(keyboard_thread, (intKeys,))
     while not intKeys:
         cmdPacket = formMagniSpeedMessage(speed1, speed2)
         ser.write(cmdPacket)
@@ -370,7 +372,7 @@ class serCommander():
 
             # get keyboard input
             if nextInput == '':
-                input = raw_input(">> ")
+                input = input(">> ")
             else:
                 input = nextInput
                 nextInput = ''
@@ -435,7 +437,7 @@ class serCommander():
 
             if input == 's':
                 logAlways("Set speed to any value")
-                lastSpeed = int(raw_input("Enter peed value 0-255 max integer: "))
+                lastSpeed = int(input("Enter peed value 0-255 max integer: "))
                 nextInput = setSpeedTillKeypress(ser, lastSpeed, lastSpeed)
 
             if input == 'n':
@@ -450,7 +452,7 @@ class serCommander():
 
             if input == 'c':          # Cycle from stop to last speed that was set over and over
                 logAlways("Cycle between last speed that was set to zero and back over and over")
-                thread.start_new_thread(keyboard_thread, (intKeys,))
+                _thread.start_new_thread(keyboard_thread, (intKeys,))
                 while not intKeys:
                     loops = 1
                     print("Cycle to the  ON speed for ", cycleOnPeriod, " cycles")
@@ -485,9 +487,9 @@ class serCommander():
 
             if input == 'D':          # Do register dump of a range of registers
                 logAlways("Query any control register to any value up to one long word size")
-                cmdFirstRegAsHex  = raw_input("Enter first control register number in hex: ")
+                cmdFirstRegAsHex  = input("Enter first control register number in hex: ")
                 cmdFirstRegNumber = int(cmdFirstRegAsHex,16)
-                cmdLastRegAsHex   = raw_input("Enter last control register number in hex: ")
+                cmdLastRegAsHex   = input("Enter last control register number in hex: ")
                 cmdLastRegNumber  = int(cmdLastRegAsHex,16)
                 print("Dump MCB from hex Reg ", cmdFirstRegAsHex,"[",cmdFirstRegNumber,"] to hex Reg ", cmdLastRegAsHex,"[",cmdLastRegNumber,"]")
                 for reg in range(cmdFirstRegNumber, cmdLastRegNumber, 1):
@@ -556,7 +558,7 @@ class serCommander():
 
             if input == 'q':          # query any register to any value
                 logAlways("Query any control register to any value up to one word size")
-                cmdRegAsHex = raw_input("Enter control register number in hex: ")
+                cmdRegAsHex = input("Enter control register number in hex: ")
                 cmdRegNumber = int(cmdRegAsHex,16)
                 queryBytes = [ 0x7e, 0x3a, 0x34, 0, 0, 0, 0 ]
                 queryBytes[2] = cmdRegNumber
@@ -596,7 +598,7 @@ class serCommander():
 
             if input == 'Q':          # query any register for a Long (32 bit value)
                 logAlways("Query any control register to any value up to one long word size")
-                cmdRegAsHex = raw_input("Enter control register number in hex: ")
+                cmdRegAsHex = input("Enter control register number in hex: ")
                 cmdRegNumber = int(cmdRegAsHex,16)
                 queryBytes = [ 0x7e, 0x3a, 0x34, 0, 0, 0, 0 ]
                 queryBytes[2] = cmdRegNumber
@@ -613,8 +615,8 @@ class serCommander():
 
             if input == 'S':          # Set any register to any value
                 logAlways("Set any control register to any value up to one word size")
-                cmdRegAsHex  = raw_input("Enter control register number in as hex digits:  ")
-                cmdRegValue  = raw_input("Enter control register value to be set in decimal: ")
+                cmdRegAsHex  = input("Enter control register number in as hex digits:  ")
+                cmdRegValue  = input("Enter control register value to be set in decimal: ")
                 cmdRegNumber = int(cmdRegAsHex,16)
                 cmdPacket = formMagniParamSetMessage(cmdRegNumber, cmdRegValue)
                 ser.write(cmdPacket)
@@ -722,8 +724,8 @@ class serCommander():
                 print("hw revision ", boardRev)
                 time.sleep(0.02)
 
-        except RuntimeError,e: 
-          logAlways("Exception in magni_cmd: " + e.message)
+        except RuntimeError as e: 
+          logAlways("Exception in magni_cmd: " + e)
         except KeyboardInterrupt:
           logAlways("terminated by keyboard interrupt! Zero the motor speed and exit")
           lastSpeed = 0
@@ -745,7 +747,7 @@ if __name__ == '__main__':
 
     try:
         serCommander()
-    except RuntimeError,e: 
-        logAlways("Exception in magni_cmd: " + e.message)
+    except RuntimeError as e: 
+        logAlways("Exception in magni_cmd: " + e)
     except Exception:
         logAlways("magni_cmd terminated.")
