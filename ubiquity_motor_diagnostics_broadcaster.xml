@@ -1,0 +1,8 @@
+<library path="ubiquity_motor">
+  <class name="ubiquity_motor/UbiquityMotorDiagnosticsBroadcaster"
+         type="ubiquity_motor::MotorDiagnosticsBroadcaster" base_class_type="controller_interface::ControllerInterface">
+    <description>
+      This controller publishes readings from the Ubiquity Motor System
+    </description>
+  </class>
+</library>

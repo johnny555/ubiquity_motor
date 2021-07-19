@@ -13,12 +13,14 @@ find_package(serial REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 
+find_package(controller_manager REQUIRED)
+find_package(realtime_tools REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-
-# find_package(backward_ros REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS
 	thread
@@ -37,14 +39,18 @@ add_library(
   src/motor_interface.cpp
   src/motor_message.cpp
   src/motor_serial.cpp
+  src/motor_diagnostics_broadcaster.cpp
 )
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
+  rclcpp_lifecycle
   serial
   std_msgs
   sensor_msgs
   hardware_interface
   pluginlib
+  realtime_tools
+  controller_manager
 )
 target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
@@ -63,6 +69,7 @@ ${PROJECT_NAME}
 # TODO(sam): generate custom Leds message
 
 pluginlib_export_plugin_description_file(hardware_interface ubiquity_motor.xml)
+pluginlib_export_plugin_description_file(controller_interface ubiquity_motor_diagnostics_broadcaster.xml)
 
 install(TARGETS 
   ${PROJECT_NAME}

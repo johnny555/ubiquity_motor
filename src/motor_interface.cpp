@@ -358,23 +358,10 @@ void MotorInterface::read_serial_inputs()
           {
             // TODO(sam): Publish from Ubuiquity Motor Diagnostics Broadcaster
 
-            // int32_t data = mm.getData();
-            // sensor_msgs::msg::BatteryState bstate;
-            // bstate.voltage = (float)data * firmware_params_.battery_voltage_multiplier +
-            //                  firmware_params_.battery_voltage_offset;
-            // bstate.current = std::numeric_limits<float>::quiet_NaN();
-            // bstate.charge = std::numeric_limits<float>::quiet_NaN();
-            // bstate.capacity = std::numeric_limits<float>::quiet_NaN();
-            // bstate.design_capacity = std::numeric_limits<float>::quiet_NaN();
-            // bstate.percentage = std::max(0.0, std::min(1.0, (bstate.voltage - 20.0) * 0.125));
-            // bstate.power_supply_status = sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_UNKNOWN;
-            // bstate.power_supply_health = sensor_msgs::msg::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
-            // bstate.power_supply_technology = sensor_msgs::msg::BatteryState::POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
-            // battery_state_pub->publish(bstate);
+            int32_t data = mm.getData();
 
-            // motor_diag_.battery_voltage = bstate.voltage;
-            // motor_diag_.battery_voltage_low_level = MotorCommands::firmware_params_.battery_voltage_low_level;
-            // motor_diag_.battery_voltage_critical = MotorCommands::firmware_params_.battery_voltage_critical;
+            battery_voltage_ = (float)data * firmware_params_.battery_voltage_multiplier +
+                                firmware_params_.battery_voltage_offset;
             break;
           }
         case MotorMessage::REG_MOT_PWR_ACTIVE:

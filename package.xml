@@ -19,14 +19,16 @@
 
   <depend>serial</depend>
   <depend>hardware_interface</depend>
+
   <depend>controller_manager</depend>
+  <depend>realtime_tools</depend>
+  <depend>rclcpp_lifecycle</depend>
   <depend>diagnostic_updater</depend>
 
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
-  <!-- <depend>backward_ros</depend> -->
 
   <export>
     <build_type>ament_cmake</build_type>

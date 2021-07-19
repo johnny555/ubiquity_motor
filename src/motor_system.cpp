@@ -105,6 +105,42 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
     }
   }
 
+  // Make sure that the system has a gpio named magni_IOs
+  auto expected_gpio_name = "magni_IOs";
+  auto it = std::find_if(info_.gpios.begin(), info_.gpios.begin(),
+    [expected_gpio_name] (const hardware_interface::ComponentInfo & state_interface) {
+      return state_interface.name == expected_gpio_name;
+    }
+  );
+  if (it == info_.gpios.end())
+  {
+    RCLCPP_FATAL(
+      rclcpp::get_logger("UbiquityMotorSystemHardware"),
+      "The system does not have the expected gpio %s in the urdf", expected_gpio_name);
+    return hardware_interface::return_type::ERROR;
+  }
+
+  for (const hardware_interface::ComponentInfo & gpio : info_.gpios) {
+    if (gpio.name == "magni_IOs")
+    {
+      // Make sure that the magni_IOs gpio has a battery_voltage state interface
+      auto expected_state_interface_name = "battery_voltage";
+      auto it = std::find_if(gpio.state_interfaces.begin(), gpio.state_interfaces.end(),
+        [expected_state_interface_name] (const hardware_interface::InterfaceInfo & state_interface) {
+          return state_interface.name == expected_state_interface_name;
+        }
+      );
+      if (it == gpio.state_interfaces.end())
+      {
+        RCLCPP_FATAL(
+          rclcpp::get_logger("UbiquityMotorSystemHardware"),
+          "Gpio '%s' does not have the expected state interface '%s' in the urdf", gpio.name.c_str(),
+          expected_state_interface_name);
+        return hardware_interface::return_type::ERROR;
+      }
+    }
+  }
+
   bool right_wheel_joint_assigned = false;
   bool left_wheel_joint_assigned = false;
 
@@ -153,6 +189,10 @@ std::vector<hardware_interface::StateInterface> UbiquityMotorSystemHardware::exp
       hardware_interface::StateInterface(
         info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &hw_velocities_[i]));
   }
+
+  state_interfaces.emplace_back(
+    hardware_interface::StateInterface(
+      "magni_IOs", "battery_voltage", &hw_battery_voltage_));
 
   return state_interfaces;
 }
@@ -325,7 +365,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::read()
 
   auto current_time = std::chrono::system_clock::now();
   std::chrono::duration<float> dt = current_time - last_joint_time_;
-  RCLCPP_INFO(rclcpp::get_logger("UbiquityMotorSystemHardware"), "Elapsed time: %.5f", dt.count());
+  RCLCPP_DEBUG(rclcpp::get_logger("UbiquityMotorSystemHardware"), "Read dt: %.5f", dt.count());
 
   // Get most recent hardware positions
   hw_positions_[left_wheel_joint_index_] = motor_interface_->left_joint_hardware_position_;
@@ -345,6 +385,9 @@ hardware_interface::return_type UbiquityMotorSystemHardware::read()
     left_last_wheel_pos_ = left_wheel_pos;
     right_last_wheel_pos_ = right_wheel_pos;
   }
+
+  // Get most recent battery voltage
+  hw_battery_voltage_ = motor_interface_->battery_voltage_;
 
   return hardware_interface::return_type::OK;
 }

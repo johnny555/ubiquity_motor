@@ -80,6 +80,7 @@ private:
   std::vector<double> hw_commands_;
   std::vector<double> hw_positions_;
   std::vector<double> hw_velocities_;
+  double hw_battery_voltage_;
 
   double left_last_wheel_pos_;
   double right_last_wheel_pos_;
