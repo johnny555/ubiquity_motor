@@ -37,127 +37,141 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory>
 #include <string>
 
-namespace ubiquity_motor {
+namespace ubiquity_motor
+{
 
 MotorDiagnosticsBroadcaster::MotorDiagnosticsBroadcaster()
-    : controller_interface::ControllerInterface() {}
+: controller_interface::ControllerInterface()
+{
+  node_ = get_node();
+}
 
-controller_interface::return_type MotorDiagnosticsBroadcaster::init(
-    const std::string& controller_name) {
-    auto ret = ControllerInterface::init(controller_name);
-    if (ret != controller_interface::return_type::OK) {
-        return ret;
-    }
+CallbackReturn MotorDiagnosticsBroadcaster::on_init()
+{
+  auto ret = ControllerInterface::init("motor_diagnostic_broadcaster");
+  if (ret != controller_interface::return_type::OK) {
+    return CallbackReturn::ERROR;
+  }
+  // TODO(sam): Add diagnostics_updater
+  try {
+    node_->declare_parameter<float>("battery_voltage_low_level", 23.2);
+    node_->declare_parameter<float>("battery_voltage_critical", 22.5);
+  } catch (const std::exception & e) {
+    fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
+    return CallbackReturn::ERROR;
+  }
 
-    // TODO(sam): Add diagnostics_updater
-
-    try {
-        node_->declare_parameter<float>("battery_voltage_low_level", 23.2);
-        node_->declare_parameter<float>("battery_voltage_critical", 22.5);
-    } catch (const std::exception& e) {
-        fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
-        return controller_interface::return_type::ERROR;
-    }
-
-    return controller_interface::return_type::OK;
+  return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn MotorDiagnosticsBroadcaster::on_configure(
-    const rclcpp_lifecycle::State& /*previous_state*/) {
+  const rclcpp_lifecycle::State & /*previous_state*/)
+{
 
-    try {
-        // register battery state publisher
-        battery_state_publisher_ = node_->create_publisher<sensor_msgs::msg::BatteryState>(
-            "~/battery", rclcpp::SystemDefaultsQoS());
-        realtime_publisher_ = std::make_unique<StatePublisher>(battery_state_publisher_);
-    } catch (const std::exception& e) {
-        fprintf(
-            stderr,
-            "Exception thrown during publisher creation at configure stage with message : %s \n",
-            e.what());
-        return CallbackReturn::ERROR;
-    }
+  try {
+    // register battery state publisher
+    battery_state_publisher_ = node_->create_publisher<sensor_msgs::msg::BatteryState>(
+      "~/battery", rclcpp::SystemDefaultsQoS());
+    realtime_publisher_ = std::make_unique<StatePublisher>(battery_state_publisher_);
+  } catch (const std::exception & e) {
+    fprintf(
+      stderr,
+      "Exception thrown during publisher creation at configure stage with message : %s \n",
+      e.what());
+    return CallbackReturn::ERROR;
+  }
 
-    realtime_publisher_->lock();
-    realtime_publisher_->msg_.current = std::numeric_limits<float>::quiet_NaN();
-    realtime_publisher_->msg_.charge = std::numeric_limits<float>::quiet_NaN();
-    realtime_publisher_->msg_.capacity = std::numeric_limits<float>::quiet_NaN();
-    realtime_publisher_->msg_.design_capacity = std::numeric_limits<float>::quiet_NaN();
-    realtime_publisher_->msg_.power_supply_status = sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_UNKNOWN;
-    realtime_publisher_->msg_.power_supply_health = sensor_msgs::msg::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
-    realtime_publisher_->msg_.power_supply_technology = sensor_msgs::msg::BatteryState::POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
-    realtime_publisher_->unlock();
+  realtime_publisher_->lock();
+  realtime_publisher_->msg_.current = std::numeric_limits<float>::quiet_NaN();
+  realtime_publisher_->msg_.charge = std::numeric_limits<float>::quiet_NaN();
+  realtime_publisher_->msg_.capacity = std::numeric_limits<float>::quiet_NaN();
+  realtime_publisher_->msg_.design_capacity = std::numeric_limits<float>::quiet_NaN();
+  realtime_publisher_->msg_.power_supply_status =
+    sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_UNKNOWN;
+  realtime_publisher_->msg_.power_supply_health =
+    sensor_msgs::msg::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
+  realtime_publisher_->msg_.power_supply_technology =
+    sensor_msgs::msg::BatteryState::POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
+  realtime_publisher_->unlock();
 
-    RCLCPP_DEBUG(node_->get_logger(), "configure successful");
-    return CallbackReturn::SUCCESS;
+  RCLCPP_DEBUG(node_->get_logger(), "configure successful");
+  return CallbackReturn::SUCCESS;
 }
 
 controller_interface::InterfaceConfiguration
-MotorDiagnosticsBroadcaster::command_interface_configuration() const {
-    controller_interface::InterfaceConfiguration command_interfaces_config;
-    command_interfaces_config.type = controller_interface::interface_configuration_type::NONE;
-    return command_interfaces_config;
+MotorDiagnosticsBroadcaster::command_interface_configuration() const
+{
+  controller_interface::InterfaceConfiguration command_interfaces_config;
+  command_interfaces_config.type = controller_interface::interface_configuration_type::NONE;
+  return command_interfaces_config;
 }
 
 controller_interface::InterfaceConfiguration
-MotorDiagnosticsBroadcaster::state_interface_configuration() const {
-    controller_interface::InterfaceConfiguration state_interfaces_config;
-    state_interfaces_config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
-    state_interfaces_config.names = {"magni_IOs/battery_voltage"};
-    return state_interfaces_config;
+MotorDiagnosticsBroadcaster::state_interface_configuration() const
+{
+  controller_interface::InterfaceConfiguration state_interfaces_config;
+  state_interfaces_config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
+  state_interfaces_config.names = {"magni_IOs/battery_voltage"};
+  return state_interfaces_config;
 }
 
 CallbackReturn MotorDiagnosticsBroadcaster::on_activate(
-    const rclcpp_lifecycle::State& /*previous_state*/) {
-    for (auto i = 0u; i < state_interfaces_.size(); i++) {
-        auto full_name = state_interfaces_[i].get_full_name();
-        RCLCPP_INFO(node_->get_logger(), "Found state intefrace with name: %s", full_name.c_str());
-        if (full_name == "magni_IOs/battery_voltage") {
-            battery_voltage_interface_index_ = i;
-        }
+  const rclcpp_lifecycle::State & /*previous_state*/)
+{
+  for (auto i = 0u; i < state_interfaces_.size(); i++) {
+    auto full_name = state_interfaces_[i].get_name();
+    RCLCPP_INFO(node_->get_logger(), "Found state intefrace with name: %s", full_name.c_str());
+    if (full_name == "magni_IOs/battery_voltage") {
+      battery_voltage_interface_index_ = i;
     }
+  }
 
-    // NOTE(sam): should I copy referances to new vector and only access from that vector?
-    // They seem to do that in the semantic interface:
-    // https://github.com/ros-controls/ros2_control/blob/master/controller_interface/include/semantic_components/semantic_component_interface.hpp
-    return CallbackReturn::SUCCESS;
+  // NOTE(sam): should I copy referances to new vector and only access from that vector?
+  // They seem to do that in the semantic interface:
+  // https://github.com/ros-controls/ros2_control/blob/master/controller_interface/include/semantic_components/semantic_component_interface.hpp
+  return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn MotorDiagnosticsBroadcaster::on_deactivate(
-    const rclcpp_lifecycle::State& /*previous_state*/) {
-    // NOTE(sam): should release the interfaces here if "loaned" in on_activate like in the semantic
-    // interface Maybe "loaning" is overkill when they are read-only anyways? TBD...
+  const rclcpp_lifecycle::State & /*previous_state*/)
+{
+  // NOTE(sam): should release the interfaces here if "loaned" in on_activate like in the semantic
+  // interface Maybe "loaning" is overkill when they are read-only anyways? TBD...
 
-    return CallbackReturn::SUCCESS;
+  return CallbackReturn::SUCCESS;
 }
 
-controller_interface::return_type MotorDiagnosticsBroadcaster::update() {
-    auto battery_voltage = state_interfaces_[battery_voltage_interface_index_].get_value();
+controller_interface::return_type MotorDiagnosticsBroadcaster::update(
+  const rclcpp::Time & time,
+  const rclcpp::Duration & period)
+{
+  auto battery_voltage = state_interfaces_[battery_voltage_interface_index_].get_value();
 
-    RCLCPP_DEBUG(node_->get_logger(), "battery_voltage: %0.5f", battery_voltage);
+  RCLCPP_DEBUG(node_->get_logger(), "battery_voltage: %0.5f", battery_voltage);
 
-    if (realtime_publisher_ && realtime_publisher_->trylock()) {
-        realtime_publisher_->msg_.header.stamp = node_->now();
+  if (realtime_publisher_ && realtime_publisher_->trylock()) {
+    realtime_publisher_->msg_.header.stamp = node_->now();
 
-        realtime_publisher_->msg_.voltage = battery_voltage;
-        realtime_publisher_->msg_.percentage =
-            std::max(0.0, std::min(1.0, (battery_voltage - 20.0) * 0.125));
+    realtime_publisher_->msg_.voltage = battery_voltage;
+    realtime_publisher_->msg_.percentage =
+      std::max(0.0, std::min(1.0, (battery_voltage - 20.0) * 0.125));
 
-        // TODO(sam): Update diagnostics
-        // motor_diag_.battery_voltage = realtime_publisher_->msg_.voltage;
-        // motor_diag_.battery_voltage_low_level =
-        // MotorHardware::fw_params.battery_voltage_low_level; motor_diag_.battery_voltage_critical
-        // = MotorHardware::fw_params.battery_voltage_critical;
+    // TODO(sam): Update diagnostics
+    // motor_diag_.battery_voltage = realtime_publisher_->msg_.voltage;
+    // motor_diag_.battery_voltage_low_level =
+    // MotorHardware::fw_params.battery_voltage_low_level; motor_diag_.battery_voltage_critical
+    // = MotorHardware::fw_params.battery_voltage_critical;
 
-        realtime_publisher_->unlockAndPublish();
-    }
+    realtime_publisher_->unlockAndPublish();
+  }
 
-    return controller_interface::return_type::OK;
+  return controller_interface::return_type::OK;
 }
 
 }  // namespace ubiquity_motor
 
 #include "pluginlib/class_list_macros.hpp"
 
-PLUGINLIB_EXPORT_CLASS(ubiquity_motor::MotorDiagnosticsBroadcaster,
-                       controller_interface::ControllerInterface)
+PLUGINLIB_EXPORT_CLASS(
+  ubiquity_motor::MotorDiagnosticsBroadcaster,
+  controller_interface::ControllerInterface)

@@ -56,7 +56,7 @@ class MotorDiagnosticsBroadcaster : public controller_interface::ControllerInter
 public:
   MotorDiagnosticsBroadcaster();
 
-  controller_interface::return_type init(const std::string & controller_name) override;
+  controller_interface::CallbackReturn on_init() override;
 
   controller_interface::InterfaceConfiguration command_interface_configuration() const override;
 
@@ -68,11 +68,14 @@ public:
 
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
 
-  controller_interface::return_type update() override;
+  controller_interface::return_type update(
+    const rclcpp::Time & time,
+    const rclcpp::Duration & period) override;
 
 protected:
   uint battery_voltage_interface_index_;
 
+  std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node_;
   using StatePublisher = realtime_tools::RealtimePublisher<sensor_msgs::msg::BatteryState>;
   rclcpp::Publisher<sensor_msgs::msg::BatteryState>::SharedPtr battery_state_publisher_;
   std::unique_ptr<StatePublisher> realtime_publisher_;

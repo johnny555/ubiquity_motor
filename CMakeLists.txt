@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(serial REQUIRED)
 
 find_package(hardware_interface REQUIRED)
+find_package(controller_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 
 find_package(controller_manager REQUIRED)
@@ -48,12 +49,14 @@ ament_target_dependencies(${PROJECT_NAME}
   std_msgs
   sensor_msgs
   hardware_interface
+  controller_interface
   pluginlib
   realtime_tools
   controller_manager
 )
 target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
+  ${controller_interface_LIBRARIES}
 )
 
 # Probe robot

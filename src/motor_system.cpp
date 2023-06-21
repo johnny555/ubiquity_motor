@@ -44,11 +44,13 @@ using namespace std::chrono_literals;
 
 namespace ubiquity_motor
 {
-hardware_interface::return_type UbiquityMotorSystemHardware::configure(
+hardware_interface::CallbackReturn UbiquityMotorSystemHardware::on_init(
   const hardware_interface::HardwareInfo & info)
 {
-  if (configure_default(info) != hardware_interface::return_type::OK) {
-    return hardware_interface::return_type::ERROR;
+  if (hardware_interface::SystemInterface::on_init(info) !=
+    CallbackReturn::SUCCESS)
+  {
+    return CallbackReturn::ERROR;
   }
 
   sys_maintenance_period_sec_ = 60s;   // A periodic MCB maintenance operation
@@ -68,7 +70,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
         rclcpp::get_logger("UbiquityMotorSystemHardware"),
         "Joint '%s' has %d command interfaces found. 1 expected.", joint.name.c_str(),
         (int)joint.command_interfaces.size());
-      return hardware_interface::return_type::ERROR;
+      return hardware_interface::CallbackReturn::ERROR;
     }
 
     if (joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY) {
@@ -76,7 +78,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
         rclcpp::get_logger("UbiquityMotorSystemHardware"),
         "Joint '%s' have %s command interfaces found. '%s' expected.", joint.name.c_str(),
         joint.command_interfaces[0].name.c_str(), hardware_interface::HW_IF_VELOCITY);
-      return hardware_interface::return_type::ERROR;
+      return hardware_interface::CallbackReturn::ERROR;
     }
 
     if (joint.state_interfaces.size() != 2) {
@@ -84,7 +86,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
         rclcpp::get_logger("UbiquityMotorSystemHardware"),
         "Joint '%s' has %d state interface. 2 expected.", joint.name.c_str(),
         (int)joint.state_interfaces.size());
-      return hardware_interface::return_type::ERROR;
+      return hardware_interface::CallbackReturn::ERROR;
     }
 
     if (joint.state_interfaces[0].name != hardware_interface::HW_IF_POSITION) {
@@ -93,7 +95,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
         "Joint '%s' have '%s' as first state interface.'%s' expected.",
         joint.name.c_str(), joint.state_interfaces[0].name.c_str(),
         hardware_interface::HW_IF_POSITION);
-      return hardware_interface::return_type::ERROR;
+      return hardware_interface::CallbackReturn::ERROR;
     }
 
     if (joint.state_interfaces[1].name != hardware_interface::HW_IF_VELOCITY) {
@@ -101,42 +103,42 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
         rclcpp::get_logger("UbiquityMotorSystemHardware"),
         "Joint '%s' have '%s' as second state interface. '%s' expected.", joint.name.c_str(),
         joint.state_interfaces[1].name.c_str(), hardware_interface::HW_IF_VELOCITY);
-      return hardware_interface::return_type::ERROR;
+      return hardware_interface::CallbackReturn::ERROR;
     }
   }
 
   // Make sure that the system has a gpio named magni_IOs
   auto expected_gpio_name = "magni_IOs";
-  auto it = std::find_if(info_.gpios.begin(), info_.gpios.begin(),
-    [expected_gpio_name] (const hardware_interface::ComponentInfo & state_interface) {
+  auto it = std::find_if(
+    info_.gpios.begin(), info_.gpios.begin(),
+    [expected_gpio_name](const hardware_interface::ComponentInfo & state_interface) {
       return state_interface.name == expected_gpio_name;
     }
   );
-  if (it == info_.gpios.end())
-  {
+  if (it == info_.gpios.end()) {
     RCLCPP_FATAL(
       rclcpp::get_logger("UbiquityMotorSystemHardware"),
       "The system does not have the expected gpio %s in the urdf", expected_gpio_name);
-    return hardware_interface::return_type::ERROR;
+    return hardware_interface::CallbackReturn::ERROR;
   }
 
   for (const hardware_interface::ComponentInfo & gpio : info_.gpios) {
-    if (gpio.name == "magni_IOs")
-    {
+    if (gpio.name == "magni_IOs") {
       // Make sure that the magni_IOs gpio has a battery_voltage state interface
       auto expected_state_interface_name = "battery_voltage";
-      auto it = std::find_if(gpio.state_interfaces.begin(), gpio.state_interfaces.end(),
-        [expected_state_interface_name] (const hardware_interface::InterfaceInfo & state_interface) {
+      auto it = std::find_if(
+        gpio.state_interfaces.begin(), gpio.state_interfaces.end(),
+        [expected_state_interface_name](const hardware_interface::InterfaceInfo & state_interface) {
           return state_interface.name == expected_state_interface_name;
         }
       );
-      if (it == gpio.state_interfaces.end())
-      {
+      if (it == gpio.state_interfaces.end()) {
         RCLCPP_FATAL(
           rclcpp::get_logger("UbiquityMotorSystemHardware"),
-          "Gpio '%s' does not have the expected state interface '%s' in the urdf", gpio.name.c_str(),
+          "Gpio '%s' does not have the expected state interface '%s' in the urdf",
+          gpio.name.c_str(),
           expected_state_interface_name);
-        return hardware_interface::return_type::ERROR;
+        return hardware_interface::CallbackReturn::ERROR;
       }
     }
   }
@@ -163,7 +165,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
       rclcpp::get_logger("UbiquityMotorSystemHardware"),
       "Left wheel joint '%s' was not found.",
       info_.hardware_parameters["left_wheel_joint_name"].c_str());
-    return hardware_interface::return_type::ERROR;
+    return hardware_interface::CallbackReturn::ERROR;
   }
 
   if (!right_wheel_joint_assigned) {
@@ -171,11 +173,10 @@ hardware_interface::return_type UbiquityMotorSystemHardware::configure(
       rclcpp::get_logger("UbiquityMotorSystemHardware"),
       "Right wheel joint '%s' was not found.",
       info_.hardware_parameters["left_wheel_joint_name"].c_str());
-    return hardware_interface::return_type::ERROR;
+    return hardware_interface::CallbackReturn::ERROR;
   }
 
-  status_ = hardware_interface::status::CONFIGURED;
-  return hardware_interface::return_type::OK;
+  return CallbackReturn::SUCCESS;
 }
 
 std::vector<hardware_interface::StateInterface> UbiquityMotorSystemHardware::export_state_interfaces()
@@ -210,7 +211,8 @@ export_command_interfaces()
   return command_interfaces;
 }
 
-hardware_interface::return_type UbiquityMotorSystemHardware::start()
+hardware_interface::CallbackReturn UbiquityMotorSystemHardware::on_activate(
+  const rclcpp_lifecycle::State & previous_state)
 {
   RCLCPP_INFO(rclcpp::get_logger("UbiquityMotorSystemHardware"), "Starting ...please wait...");
 
@@ -236,7 +238,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::start()
         rclcpp::get_logger(
           "UbiquityMotorSystemHardware"),
         "System Failed to start! Could not start serial communication.");
-      // return hardware_interface::return_type::ERROR;
+      // return hardware_interface::CallbackReturn::ERROR;
     }
   }
 
@@ -270,8 +272,7 @@ hardware_interface::return_type UbiquityMotorSystemHardware::start()
         RCLCPP_ERROR(
           rclcpp::get_logger(
             "UbiquityMotorSystemHardware"), "Could not read frimware version!");
-        // status_ = hardware_interface::status::STOPPED;
-        return hardware_interface::return_type::ERROR;   // NOTE(sam): does not seem to prevent read/write from running
+        return hardware_interface::CallbackReturn::ERROR;   // NOTE(sam): does not seem to prevent read/write from running
       }
     }
   }
@@ -313,13 +314,12 @@ hardware_interface::return_type UbiquityMotorSystemHardware::start()
     }
   }
 
-  status_ = hardware_interface::status::STARTED;
 
   RCLCPP_INFO(rclcpp::get_logger("UbiquityMotorSystemHardware"), "System Successfully started!");
 
   // TODO(sam): Add ESTOP speed reset with delay
 
-  return hardware_interface::return_type::OK;
+  return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 void UbiquityMotorSystemHardware::start_serial()
@@ -343,7 +343,8 @@ void UbiquityMotorSystemHardware::start_serial()
   RCLCPP_INFO(rclcpp::get_logger("UbiquityMotorSystemHardware"), "MCB serial port initialized");
 }
 
-hardware_interface::return_type UbiquityMotorSystemHardware::stop()
+hardware_interface::CallbackReturn UbiquityMotorSystemHardware::on_deactivate(
+  const rclcpp_lifecycle::State & previous_state)
 {
   RCLCPP_INFO(rclcpp::get_logger("UbiquityMotorSystemHardware"), "Stopping ...please wait...");
 
@@ -352,14 +353,15 @@ hardware_interface::return_type UbiquityMotorSystemHardware::stop()
   rclcpp::sleep_for(100ms);
   motor_serial_->closePort();
 
-  status_ = hardware_interface::status::STOPPED;
 
   RCLCPP_INFO(rclcpp::get_logger("UbiquityMotorSystemHardware"), "System successfully stopped!");
 
-  return hardware_interface::return_type::OK;
+  return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-hardware_interface::return_type UbiquityMotorSystemHardware::read()
+hardware_interface::return_type UbiquityMotorSystemHardware::read(
+  const rclcpp::Time & time,
+  const rclcpp::Duration & period)
 {
   motor_interface_->read_serial_inputs();
 
@@ -392,7 +394,8 @@ hardware_interface::return_type UbiquityMotorSystemHardware::read()
   return hardware_interface::return_type::OK;
 }
 
-hardware_interface::return_type ubiquity_motor::UbiquityMotorSystemHardware::write()
+hardware_interface::return_type ubiquity_motor::UbiquityMotorSystemHardware::write(
+  const rclcpp::Time & time, const rclcpp::Duration & period)
 {
   // TODO(sam): handle motor control is disabled
 

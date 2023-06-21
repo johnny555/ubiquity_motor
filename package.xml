@@ -13,12 +13,15 @@
   <test_depend>ament_lint_common</test_depend>
 
   <depend>boost</depend>
+  
 
   <depend>rclcpp</depend>
   <depend>pluginlib</depend>
 
   <depend>serial</depend>
   <depend>hardware_interface</depend>
+  <depend>controller_interface</depend>
+  
 
   <depend>controller_manager</depend>
   <depend>realtime_tools</depend>
