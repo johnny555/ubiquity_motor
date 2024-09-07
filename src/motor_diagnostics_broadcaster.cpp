@@ -48,7 +48,9 @@ MotorDiagnosticsBroadcaster::MotorDiagnosticsBroadcaster()
 
 CallbackReturn MotorDiagnosticsBroadcaster::on_init()
 {
-  auto ret = ControllerInterface::init("motor_diagnostic_broadcaster");
+  rclcpp::NodeOptions opt;
+  
+  auto ret = ControllerInterface::init("motor_diagnostic_broadcaster", "", 20, "/", opt);
   if (ret != controller_interface::return_type::OK) {
     return CallbackReturn::ERROR;
   }

@@ -111,7 +111,7 @@ struct CommsParams
   CommsParams() {}    // NOTE(sam): Don't use this...
 
   explicit CommsParams(hardware_interface::HardwareInfo info)
-  : serial_port("/dev/ttyS0"), baud_rate(9600)
+  : serial_port("/dev/ttyAMA10"), baud_rate(9600)
   {
     auto params = info.hardware_parameters;
 
